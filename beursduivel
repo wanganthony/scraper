@@ -1,0 +1,73 @@
+# scraper
+Extract data from websites
+
+"""
+Created on Tue Jun 26 12:39:49 2018
+
+@author: Anthony
+"""
+#import libraries
+from selenium import webdriver
+# from selenium.webdriver.common.keys import Keys
+from bs4 import BeautifulSoup
+import re
+import pandas as pd
+import time
+
+#launch Beursduivel url
+url = "https://www.beursduivel.be/Koersen/Europa-lokale-beurzen/Brussel/Bel20.aspx"
+
+# create a new Chrome session
+driver = webdriver.Chrome()
+driver.get(url)
+
+# accept cookie
+time.sleep(5)
+python_button = driver.find_element_by_id('btnYes') #Cookie
+python_button.click() #click cookie
+
+# close email ad
+time.sleep(5)
+python_button = driver.find_element_by_id('modal-btn-close')
+python_button.click()
+
+#Selenium hands the page source to Beautiful Soup
+soup_level1=BeautifulSoup(driver.page_source, 'lxml')
+
+datalist = [] #empty list
+datanames = [] #empty list of stock names
+
+# BeautifulSoup finds all stock price links on the page and the loop begins
+links = soup_level1.find_all('a', title=re.compile("^Koers +"))
+
+for link in links:
+    
+    #Selenium visits each individual stock page
+    driver.find_element_by_link_text(link.text).click() # visit stock page
+    time.sleep(3)
+    driver.find_element_by_link_text("Historisch").click()  # visit stock history
+    time.sleep(3)
+    driver.find_element_by_partial_link_text("Vorige maand").click()  # visit stock history
+    time.sleep(3)
+    driver.find_element_by_partial_link_text("Vorige maand").click()  # visit stock history
+
+    #Selenium hands the source of the specific stock page to Beautiful Soup
+    soup_level2=BeautifulSoup(driver.page_source, 'lxml')
+
+    #BeautifulSoup grabs the HTML table on the page
+    table = soup_level2.find_all('table')[0]
+
+    #Giving the HTML table to pandas to put in a dataframe object 
+    df = pd.read_html(str(table),header=0)[0]
+    datalist.append(df)
+    datanames.append(link.text)
+    
+    #Ask Selenium to click the back button
+    driver.execute_script("window.history.go(-4)") 
+       
+    #end loop block
+    
+# loop has completed
+
+# end the Selenium browser session
+driver.quit()
